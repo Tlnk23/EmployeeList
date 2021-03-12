@@ -1,6 +1,9 @@
 package com.tlnk.employeelist;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -12,6 +15,7 @@ import com.tlnk.employeelist.api.ApiFactory;
 import com.tlnk.employeelist.api.ApiService;
 import com.tlnk.employeelist.pojo.Employee;
 import com.tlnk.employeelist.pojo.EmployeeResponse;
+import com.tlnk.employeelist.screens.employees.EmployeeViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private EmployeeAdapter employeeAdapter = new EmployeeAdapter();
-    private Disposable disposable;
+    private EmployeeViewModel employeeViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,29 +42,15 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(employeeAdapter);
         employeeAdapter.setEmployeeList(new ArrayList<Employee>());
 
-        ApiFactory apiFactory = ApiFactory.getInstance();
-        ApiService apiService = apiFactory.getApiService();
-        disposable = apiService.getEmployees()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<EmployeeResponse>() {
-                    @Override
-                    public void accept(EmployeeResponse employeeResponse) throws Exception {
-                        employeeAdapter.setEmployeeList(employeeResponse.getResponse());
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) throws Exception {
-                        Toast.makeText(MainActivity.this, throwable.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                });
+        employeeViewModel = ViewModelProviders.of(this).get(EmployeeViewModel.class);
+        employeeViewModel.getEmployees().observe(this, new Observer<List<Employee>>() {
+            @Override
+            public void onChanged(List<Employee> employees) {
+                employeeAdapter.setEmployeeList(employees);
+            }
+        });
+        employeeViewModel.loadData();
+
     }
 
-    @Override
-    protected void onDestroy() {
-        if (disposable != null) {
-            disposable.dispose();
-        }
-        super.onDestroy();
-    }
 }
